@@ -1,57 +1,52 @@
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+import urllib.parse
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
+
+def get_database_url():
+    """Get database URL with proper parsing for Render"""
+    database_url = os.environ.get('DATABASE_URL')
+    
+    if database_url and database_url.startswith('postgres://'):
+        # Render gives postgres://, but SQLAlchemy needs postgresql://
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    return database_url or 'sqlite:///tech_booking.db'
 
 class Config:
     # Security
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-fallback-key-change-in-production'
-    
-    # Server
-    PORT = int(os.environ.get('PORT', 5000))
-    HOST = os.environ.get('HOST', '0.0.0.0')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'change-this-in-production')
     
     # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///tech_booking.db'
+    SQLALCHEMY_DATABASE_URI = get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', 20))
-    SQLALCHEMY_MAX_OVERFLOW = int(os.environ.get('SQLALCHEMY_MAX_OVERFLOW', 0))
-    SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', 3600))
-    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'False').lower() == 'true'
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 10,
+        'pool_recycle': 300,
+        'pool_pre_ping': True,
+    }
     
     # Session
-    PERMANENT_SESSION_LIFETIME = timedelta(
-        hours=int(os.environ.get('PERMANENT_SESSION_LIFETIME', 1))
-    )
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=1)
+    SESSION_COOKIE_SECURE = True  # Only send over HTTPS
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Application
     DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
-    ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
+    ENVIRONMENT = os.environ.get('ENVIRONMENT', 'production')
     
     # Security
-    BCRYPT_LOG_ROUNDS = int(os.environ.get('BCRYPT_LOG_ROUNDS', 12))
+    BCRYPT_LOG_ROUNDS = 12
     
     # File uploads
-    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
-    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'static/uploads')
-    ALLOWED_EXTENSIONS = set(os.environ.get('ALLOWED_EXTENSIONS', 'pdf,png,jpg,jpeg,gif').split(','))
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     
     # CORS
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5000').split(',')
-    CORS_SUPPORTS_CREDENTIALS = os.environ.get('CORS_SUPPORTS_CREDENTIALS', 'True').lower() == 'true'
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
     
     # Logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_FILE = os.environ.get('LOG_FILE', 'app.log')
-    LOG_FORMAT = os.environ.get('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', 10485760))
-    LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', 5))
-    
-    # Email (optional)
-    MAIL_SERVER = os.environ.get('MAIL_SERVER')
-    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')

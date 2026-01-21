@@ -7,10 +7,14 @@ from datetime import datetime, timedelta
 from database import db, User, TechnicianProfile, Service, Booking, Review
 from config import Config
 import os
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app)
+
+# Load environment variables
+load_dotenv()
 
 # Initialize database and login manager
 db.init_app(app)
@@ -367,5 +371,5 @@ def internal_error(error):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    host = os.environ.get('HOST', '0.0.0.0')
-    app.run(debug=app.config['DEBUG'], host=host, port=port)
+    # Don't run in debug mode on production
+    app.run(host='0.0.0.0', port=port)
