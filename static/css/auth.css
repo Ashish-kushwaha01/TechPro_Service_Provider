@@ -1,0 +1,116 @@
+/* Additional auth-specific styles */
+.auth-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.auth-card {
+    animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    background: var(--light-color);
+    border: 2px solid var(--border-color);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    background: white;
+}
+
+.password-strength {
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.password-strength::after {
+    content: '';
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--success-color);
+    transition: width 0.3s ease;
+}
+
+.terms-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.terms-checkbox input {
+    margin-top: 0.25rem;
+}
+
+.terms-checkbox span {
+    font-size: 0.9rem;
+    color: var(--gray-color);
+}
+
+.terms-checkbox a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.auth-divider {
+    margin: 2rem 0;
+}
+
+.social-auth .btn-social {
+    background: white;
+}
+
+.social-auth .btn-social:hover {
+    transform: translateY(-2px);
+}
+
+.auth-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Password validation */
+.password-validation {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--gray-color);
+}
+
+.validation-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.validation-item.valid {
+    color: var(--success-color);
+}
+
+.validation-item.invalid {
+    color: var(--danger-color);
+}
+
+.validation-item i {
+    font-size: 0.6rem;
+}

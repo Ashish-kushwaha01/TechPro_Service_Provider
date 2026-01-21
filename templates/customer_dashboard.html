@@ -1,0 +1,287 @@
+{% extends "layou.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-home"></i> Welcome, {{ current_user.username }}!</h1>
+        <p>Find and book skilled technicians for your needs</p>
+    </div>
+    
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <div class="stat-icon primary">
+                <i class="fas fa-tools"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ bookings|length }}</h3>
+                <p>Total Bookings</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ bookings|selectattr('status', 'equalto', 'completed')|list|length }}</h3>
+                <p>Completed</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon warning">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ bookings|selectattr('status', 'equalto', 'pending')|list|length }}</h3>
+                <p>Pending</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-card-action">
+                <a href="{{ url_for('find_technicians') }}" class="btn-primary">
+                    <i class="fas fa-search"></i> Find Technician
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-content">
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2><i class="fas fa-history"></i> Recent Bookings</h2>
+                <a href="{{ url_for('customer_bookings') }}" class="view-all">View All</a>
+            </div>
+            
+            {% if bookings %}
+            <div class="bookings-list">
+                {% for booking in bookings %}
+                <div class="booking-card">
+                    <div class="booking-header">
+                        <h4>{{ booking.service_type }}</h4>
+                        <span class="status-badge {{ booking.status }}">{{ booking.status|title }}</span>
+                    </div>
+                    <div class="booking-info">
+                        <p><i class="fas fa-calendar"></i> {{ booking.scheduled_date.strftime('%B %d, %Y') }}</p>
+                        <p><i class="fas fa-clock"></i> {{ booking.estimated_hours }} hours</p>
+                        <p><i class="fas fa-dollar-sign"></i> ${{ "%.2f"|format(booking.total_cost) }}</p>
+                    </div>
+                    <div class="booking-actions">
+                        {% if booking.status == 'pending' %}
+                        <button class="btn-cancel" onclick="cancelBooking({{ booking.id }})">Cancel</button>
+                        {% endif %}
+                        {% if booking.status == 'completed' and not booking.rating %}
+                        <button class="btn-review" onclick="openReviewModal({{ booking.id }})">Add Review</button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-plus"></i>
+                <h3>No bookings yet</h3>
+                <p>Find a technician and book your first service!</p>
+                <a href="{{ url_for('find_technicians') }}" class="btn-primary">
+                    <i class="fas fa-search"></i> Find Technician
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+            </div>
+            <div class="quick-actions">
+                <a href="{{ url_for('find_technicians') }}" class="quick-action-card">
+                    <div class="quick-action-icon primary">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h4>Find Technician</h4>
+                    <p>Search for available technicians</p>
+                </a>
+                
+                <a href="{{ url_for('customer_bookings') }}" class="quick-action-card">
+                    <div class="quick-action-icon success">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h4>My Bookings</h4>
+                    <p>View all your bookings</p>
+                </a>
+                
+                <div class="quick-action-card" onclick="updateLocation()">
+                    <div class="quick-action-icon warning">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <h4>Update Location</h4>
+                    <p>Share your location for better results</p>
+                </div>
+                
+                <a href="#" class="quick-action-card">
+                    <div class="quick-action-icon info">
+                        <i class="fas fa-question-circle"></i>
+                    </div>
+                    <h4>Help Center</h4>
+                    <p>Get help and support</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Rate Your Experience</h3>
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="reviewForm">
+                <input type="hidden" id="bookingId">
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="star-rating">
+                        {% for i in range(5, 0, -1) %}
+                        <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}">
+                        <label for="star{{ i }}" title="{{ i }} stars">
+                            <i class="fas fa-star"></i>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="reviewText">Review</label>
+                    <textarea id="reviewText" name="review" rows="4" placeholder="Share your experience..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Submit Review</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentBookingId = null;
+
+function openReviewModal(bookingId) {
+    currentBookingId = bookingId;
+    document.getElementById('bookingId').value = bookingId;
+    document.getElementById('reviewModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('reviewModal').style.display = 'none';
+}
+
+document.getElementById('reviewForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        booking_id: currentBookingId,
+        rating: document.querySelector('input[name="rating"]:checked')?.value,
+        review: document.getElementById('reviewText').value
+    };
+    
+    if (!formData.rating) {
+        showNotification('Please select a rating', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/submit-review', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Review submitted successfully!', 'success');
+            closeModal();
+            location.reload();
+        } else {
+            showNotification(data.error || 'Failed to submit review', 'error');
+        }
+    } catch (error) {
+        showNotification('An error occurred', 'error');
+    }
+});
+
+async function updateLocation() {
+    if (!navigator.geolocation) {
+        showNotification('Geolocation is not supported by your browser', 'error');
+        return;
+    }
+    
+    showNotification('Getting your location...', 'info');
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+        };
+        
+        try {
+            const response = await fetch('/update-location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(location)
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                showNotification('Location updated successfully!', 'success');
+            }
+        } catch (error) {
+            showNotification('Failed to update location', 'error');
+        }
+    }, (error) => {
+        showNotification('Unable to retrieve your location', 'error');
+    });
+}
+
+async function cancelBooking(bookingId) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    
+    try {
+        const response = await fetch('/update-booking-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                booking_id: bookingId,
+                status: 'cancelled'
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Booking cancelled successfully', 'success');
+            location.reload();
+        } else {
+            showNotification(data.error || 'Failed to cancel booking', 'error');
+        }
+    } catch (error) {
+        showNotification('An error occurred', 'error');
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('reviewModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

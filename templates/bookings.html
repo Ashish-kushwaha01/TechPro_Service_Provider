@@ -1,0 +1,303 @@
+{% extends "layou.html" %}
+
+{% block content %}
+<div class="bookings-container">
+    <div class="bookings-header">
+        <h1>
+            <i class="fas fa-calendar-alt"></i>
+            {% if user_role == 'customer' %}
+                My Bookings
+            {% else %}
+                Job Bookings
+            {% endif %}
+        </h1>
+        <p>Manage all your service bookings</p>
+    </div>
+    
+    <div class="bookings-filters">
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all">All</button>
+            <button class="filter-tab" data-filter="pending">Pending</button>
+            <button class="filter-tab" data-filter="accepted">Accepted</button>
+            <button class="filter-tab" data-filter="in_progress">In Progress</button>
+            <button class="filter-tab" data-filter="completed">Completed</button>
+            <button class="filter-tab" data-filter="cancelled">Cancelled</button>
+        </div>
+        
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchBookings" placeholder="Search bookings...">
+        </div>
+    </div>
+    
+    <div class="bookings-list">
+        {% if bookings %}
+            {% for booking in bookings %}
+            <div class="booking-item" data-status="{{ booking.status }}">
+                <div class="booking-status">
+                    <span class="status-indicator {{ booking.status }}"></span>
+                    <span class="status-text">{{ booking.status|title }}</span>
+                </div>
+                
+                <div class="booking-details">
+                    <div class="booking-main">
+                        <h3>{{ booking.service_type }}</h3>
+                        <p class="booking-description">{{ booking.description or 'No description provided' }}</p>
+                        
+                        <div class="booking-meta">
+                            <span><i class="fas fa-calendar"></i> {{ booking.scheduled_date.strftime('%B %d, %Y %I:%M %p') }}</span>
+                            <span><i class="fas fa-clock"></i> {{ booking.estimated_hours }} hours</span>
+                            <span><i class="fas fa-dollar-sign"></i> ${{ "%.2f"|format(booking.total_cost) }}</span>
+                            {% if user_role == 'customer' %}
+                            <span><i class="fas fa-user-tie"></i> {{ booking.technician.username }}</span>
+                            {% else %}
+                            <span><i class="fas fa-user"></i> {{ booking.customer.username }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="booking-actions">
+                        {% if user_role == 'customer' %}
+                            {% if booking.status == 'pending' %}
+                            <button class="btn-cancel" onclick="cancelBooking({{ booking.id }})">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            {% elif booking.status == 'completed' and not booking.rating %}
+                            <button class="btn-review" onclick="openReviewModal({{ booking.id }})">
+                                <i class="fas fa-star"></i> Add Review
+                            </button>
+                            {% endif %}
+                        {% else %}
+                            {% if booking.status == 'pending' %}
+                            <button class="btn-accept" onclick="updateBookingStatus({{ booking.id }}, 'accepted')">
+                                <i class="fas fa-check"></i> Accept
+                            </button>
+                            <button class="btn-cancel" onclick="updateBookingStatus({{ booking.id }}, 'cancelled')">
+                                <i class="fas fa-times"></i> Decline
+                            </button>
+                            {% elif booking.status == 'accepted' %}
+                            <button class="btn-primary" onclick="updateBookingStatus({{ booking.id }}, 'in_progress')">
+                                <i class="fas fa-play"></i> Start Job
+                            </button>
+                            {% elif booking.status == 'in_progress' %}
+                            <button class="btn-success" onclick="updateBookingStatus({{ booking.id }}, 'completed')">
+                                <i class="fas fa-check-double"></i> Complete
+                            </button>
+                            {% endif %}
+                        {% endif %}
+                        
+                        <button class="btn-secondary" onclick="viewBookingDetails({{ booking.id }})">
+                            <i class="fas fa-eye"></i> Details
+                        </button>
+                    </div>
+                </div>
+                
+                {% if booking.rating %}
+                <div class="booking-review">
+                    <div class="review-rating">
+                        {% for i in range(5) %}
+                            {% if i < booking.rating|int %}
+                            <i class="fas fa-star filled"></i>
+                            {% else %}
+                            <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% if booking.review %}
+                    <p class="review-text">"{{ booking.review }}"</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-plus"></i>
+                <h3>No bookings yet</h3>
+                <p>
+                    {% if user_role == 'customer' %}
+                    Find a technician and book your first service!
+                    {% else %}
+                    You don't have any bookings yet. When you do, they'll appear here.
+                    {% endif %}
+                </p>
+                {% if user_role == 'customer' %}
+                <a href="{{ url_for('find_technicians') }}" class="btn-primary">
+                    <i class="fas fa-search"></i> Find Technician
+                </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Rate Your Experience</h3>
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="reviewForm">
+                <input type="hidden" id="bookingId">
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="star-rating">
+                        {% for i in range(5, 0, -1) %}
+                        <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}">
+                        <label for="star{{ i }}" title="{{ i }} stars">
+                            <i class="fas fa-star"></i>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="reviewText">Review</label>
+                    <textarea id="reviewText" name="review" rows="4" placeholder="Share your experience..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Submit Review</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentBookingId = null;
+
+// Filter bookings by status
+document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        const filter = this.dataset.filter;
+        
+        // Update active tab
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter bookings
+        document.querySelectorAll('.booking-item').forEach(item => {
+            if (filter === 'all' || item.dataset.status === filter) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Search bookings
+document.getElementById('searchBookings').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    
+    document.querySelectorAll('.booking-item').forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+function openReviewModal(bookingId) {
+    currentBookingId = bookingId;
+    document.getElementById('bookingId').value = bookingId;
+    document.getElementById('reviewModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('reviewModal').style.display = 'none';
+}
+
+async function updateBookingStatus(bookingId, status) {
+    const confirmMessages = {
+        'accepted': 'Accept this booking?',
+        'cancelled': 'Cancel this booking?',
+        'in_progress': 'Start this job?',
+        'completed': 'Mark this job as completed?'
+    };
+    
+    if (!confirm(confirmMessages[status] || 'Update booking status?')) return;
+    
+    try {
+        const response = await fetch('/update-booking-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                booking_id: bookingId,
+                status: status
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Booking status updated successfully', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.error || 'Failed to update status', 'error');
+        }
+    } catch (error) {
+        showNotification('An error occurred', 'error');
+    }
+}
+
+async function cancelBooking(bookingId) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    
+    await updateBookingStatus(bookingId, 'cancelled');
+}
+
+document.getElementById('reviewForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        booking_id: currentBookingId,
+        rating: document.querySelector('input[name="rating"]:checked')?.value,
+        review: document.getElementById('reviewText').value
+    };
+    
+    if (!formData.rating) {
+        showNotification('Please select a rating', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/submit-review', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Review submitted successfully!', 'success');
+            closeModal();
+            location.reload();
+        } else {
+            showNotification(data.error || 'Failed to submit review', 'error');
+        }
+    } catch (error) {
+        showNotification('An error occurred', 'error');
+    }
+});
+
+function viewBookingDetails(bookingId) {
+    showNotification('Booking details feature coming soon!', 'info');
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('reviewModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,276 @@
+{% extends "layou.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-tools"></i> Welcome, {{ current_user.username }}!</h1>
+        <p>Manage your services and bookings</p>
+    </div>
+    
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <div class="stat-icon primary">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ bookings|length }}</h3>
+                <p>Active Bookings</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon success">
+                <i class="fas fa-check-double"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ total_completed }}</h3>
+                <p>Completed Jobs</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon warning">
+                <i class="fas fa-star"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ profile.rating|default(0)|round(1) }}</h3>
+                <p>Rating ({{ profile.total_reviews|default(0) }} reviews)</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon info">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-info">
+                <h3>${{ "%.2f"|format(total_earnings) }}</h3>
+                <p>Total Earnings</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="availability-toggle">
+        <label class="switch">
+            <input type="checkbox" id="availabilityToggle" {% if profile.is_available %}checked{% endif %}>
+            <span class="slider"></span>
+        </label>
+        <span class="toggle-label">
+            {% if profile.is_available %}
+                <i class="fas fa-circle" style="color: #4CAF50;"></i> Available for work
+            {% else %}
+                <i class="fas fa-circle" style="color: #f44336;"></i> Not available
+            {% endif %}
+        </span>
+    </div>
+    
+    <div class="dashboard-content">
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2><i class="fas fa-tasks"></i> Recent Bookings</h2>
+                <a href="{{ url_for('technician_bookings') }}" class="view-all">View All</a>
+            </div>
+            
+            {% if bookings %}
+            <div class="bookings-list">
+                {% for booking in bookings %}
+                <div class="booking-card">
+                    <div class="booking-header">
+                        <h4>{{ booking.service_type }}</h4>
+                        <span class="status-badge {{ booking.status }}">{{ booking.status|title }}</span>
+                    </div>
+                    <div class="booking-info">
+                        <p><i class="fas fa-user"></i> Customer: {{ booking.customer.username }}</p>
+                        <p><i class="fas fa-calendar"></i> {{ booking.scheduled_date.strftime('%B %d, %Y %I:%M %p') }}</p>
+                        <p><i class="fas fa-clock"></i> {{ booking.estimated_hours }} hours</p>
+                        <p><i class="fas fa-dollar-sign"></i> ${{ "%.2f"|format(booking.total_cost) }}</p>
+                    </div>
+                    <div class="booking-actions">
+                        {% if booking.status == 'pending' %}
+                        <button class="btn-accept" onclick="updateBookingStatus({{ booking.id }}, 'accepted')">Accept</button>
+                        <button class="btn-cancel" onclick="updateBookingStatus({{ booking.id }}, 'cancelled')">Decline</button>
+                        {% elif booking.status == 'accepted' %}
+                        <button class="btn-primary" onclick="updateBookingStatus({{ booking.id }}, 'in_progress')">Start Job</button>
+                        {% elif booking.status == 'in_progress' %}
+                        <button class="btn-success" onclick="updateBookingStatus({{ booking.id }}, 'completed')">Complete Job</button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-plus"></i>
+                <h3>No bookings yet</h3>
+                <p>When you get bookings, they'll appear here</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-line"></i> Your Profile</h2>
+            </div>
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div class="profile-info">
+                        <h3>{{ current_user.username }}</h3>
+                        <p class="profile-title">{{ profile.service_type }} Technician</p>
+                        <div class="rating">
+                            {% for i in range(5) %}
+                                {% if i < profile.rating|default(0)|int %}
+                                <i class="fas fa-star filled"></i>
+                                {% else %}
+                                <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span>({{ profile.total_reviews|default(0) }} reviews)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-details">
+                    <div class="detail-item">
+                        <i class="fas fa-briefcase"></i>
+                        <div>
+                            <h4>Service Type</h4>
+                            <p>{{ profile.service_type }}</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <div>
+                            <h4>Hourly Rate</h4>
+                            <p>${{ "%.2f"|format(profile.hourly_rate) }}/hour</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-cogs"></i>
+                        <div>
+                            <h4>Skills</h4>
+                            <p>{{ profile.skills|default('Not specified') }}</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-file-alt"></i>
+                        <div>
+                            <h4>Description</h4>
+                            <p>{{ profile.description|default('No description provided') }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="btn-secondary" onclick="editProfile()">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </button>
+                    <button class="btn-secondary" onclick="updateLocation()">
+                        <i class="fas fa-map-marker-alt"></i> Update Location
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Availability toggle
+document.getElementById('availabilityToggle').addEventListener('change', async function() {
+    try {
+        const response = await fetch('/update-availability', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                is_available: this.checked
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification(
+                this.checked ? 'You are now available for work' : 'You are now unavailable',
+                'success'
+            );
+        }
+    } catch (error) {
+        showNotification('Failed to update availability', 'error');
+        this.checked = !this.checked;
+    }
+});
+
+async function updateBookingStatus(bookingId, status) {
+    const confirmMessage = status === 'accepted' ? 'Accept this booking?' :
+                          status === 'cancelled' ? 'Decline this booking?' :
+                          status === 'in_progress' ? 'Start this job?' :
+                          'Mark this job as completed?';
+    
+    if (!confirm(confirmMessage)) return;
+    
+    try {
+        const response = await fetch('/update-booking-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                booking_id: bookingId,
+                status: status
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Booking status updated successfully', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.error || 'Failed to update status', 'error');
+        }
+    } catch (error) {
+        showNotification('An error occurred', 'error');
+    }
+}
+
+async function updateLocation() {
+    if (!navigator.geolocation) {
+        showNotification('Geolocation is not supported by your browser', 'error');
+        return;
+    }
+    
+    showNotification('Getting your location...', 'info');
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+        };
+        
+        try {
+            const response = await fetch('/update-location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(location)
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                showNotification('Location updated successfully!', 'success');
+            }
+        } catch (error) {
+            showNotification('Failed to update location', 'error');
+        }
+    }, (error) => {
+        showNotification('Unable to retrieve your location', 'error');
+    });
+}
+
+function editProfile() {
+    showNotification('Profile editing feature coming soon!', 'info');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,581 @@
+{% extends "layou.html" %}
+
+{% block content %}
+<div class="find-container">
+    <div class="find-header">
+        <h1><i class="fas fa-search"></i> Find Technicians Near You</h1>
+        <p>Search for skilled technicians based on your location and needs</p>
+    </div>
+    
+    <div class="find-content">
+        <div class="filters-sidebar">
+            <div class="filter-section">
+                <h3><i class="fas fa-filter"></i> Filters</h3>
+                
+                <div class="filter-group">
+                    <label for="serviceType"><i class="fas fa-briefcase"></i> Service Type</label>
+                    <select id="serviceType">
+                        <option value="">All Services</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="HVAC">HVAC</option>
+                        <option value="Carpentry">Carpentry</option>
+                        <option value="Painting">Painting</option>
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Appliance Repair">Appliance Repair</option>
+                        <option value="General Handyman">General Handyman</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="distance"><i class="fas fa-map-marker-alt"></i> Max Distance</label>
+                    <select id="distance">
+                        <option value="10">Within 10 km</option>
+                        <option value="25" selected>Within 25 km</option>
+                        <option value="50">Within 50 km</option>
+                        <option value="100">Within 100 km</option>
+                        <option value="99999">Any distance</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortBy"><i class="fas fa-sort"></i> Sort By</label>
+                    <select id="sortBy">
+                        <option value="distance">Distance (Nearest)</option>
+                        <option value="rating">Rating (Highest)</option>
+                        <option value="rate">Rate (Lowest)</option>
+                        <option value="experience">Experience</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label><i class="fas fa-star"></i> Minimum Rating</label>
+                    <div class="rating-filter">
+                        {% for i in range(5, 0, -1) %}
+                        <label class="star-option">
+                            <input type="radio" name="minRating" value="{{ i }}">
+                            <span>
+                                {% for j in range(i) %}
+                                <i class="fas fa-star"></i>
+                                {% endfor %}
+                                {% for j in range(5-i) %}
+                                <i class="far fa-star"></i>
+                                {% endfor %}
+                                & up
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="hourlyRate"><i class="fas fa-money-bill-wave"></i> Max Hourly Rate</label>
+                    <div class="range-input">
+                        <input type="range" id="hourlyRate" min="15" max="200" value="100" step="5">
+                        <span id="rateValue">$100/hr</span>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="searchTechnicians()">
+                    <i class="fas fa-search"></i> Apply Filters
+                </button>
+                
+                <button class="btn-secondary" onclick="resetFilters()">
+                    <i class="fas fa-redo"></i> Reset Filters
+                </button>
+            </div>
+            
+            <div class="location-section">
+                <h3><i class="fas fa-map-marker-alt"></i> Your Location</h3>
+                <p>Share your location for accurate results</p>
+                <button class="btn-location" onclick="getUserLocation()">
+                    <i class="fas fa-crosshairs"></i> Use Current Location
+                </button>
+                <div class="location-status" id="locationStatus">
+                    <i class="fas fa-info-circle"></i> Location not set
+                </div>
+            </div>
+        </div>
+        
+        <div class="results-main">
+            <div class="search-bar">
+                <div class="search-input">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="keywordSearch" placeholder="Search for specific skills or services...">
+                </div>
+                <button class="btn-primary" onclick="searchTechnicians()">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            
+            <div class="results-info">
+                <h3 id="resultsCount">Searching for technicians...</h3>
+                <div class="view-toggle">
+                    <button class="view-btn active" onclick="setView('grid')">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button class="view-btn" onclick="setView('list')">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="resultsContainer" class="results-grid">
+                <!-- Results will be loaded here -->
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Searching for technicians near you...</p>
+                </div>
+            </div>
+            
+            <div id="noResults" class="empty-state hidden">
+                <i class="fas fa-search"></i>
+                <h3>No technicians found</h3>
+                <p>Try adjusting your filters or location</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Modal -->
+<div id="bookingModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Book Technician</h3>
+            <button class="close-modal" onclick="closeBookingModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="bookingForm">
+                <input type="hidden" id="technicianId">
+                <input type="hidden" id="technicianName">
+                
+                <div class="technician-info">
+                    <div class="technician-avatar">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <h4 id="modalTechName"></h4>
+                        <p id="modalTechService"></p>
+                        <div class="modal-rating" id="modalTechRating"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="serviceTypeSelect"><i class="fas fa-briefcase"></i> Service Type</label>
+                    <select id="serviceTypeSelect" required>
+                        <option value="">Select service type</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="HVAC">HVAC</option>
+                        <option value="Carpentry">Carpentry</option>
+                        <option value="Painting">Painting</option>
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Appliance Repair">Appliance Repair</option>
+                        <option value="General Handyman">General Handyman</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description"><i class="fas fa-file-alt"></i> Job Description</label>
+                    <textarea id="description" rows="3" required placeholder="Describe the job you need done..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="scheduledDate"><i class="fas fa-calendar"></i> Preferred Date</label>
+                        <input type="datetime-local" id="scheduledDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="estimatedHours"><i class="fas fa-clock"></i> Estimated Hours</label>
+                        <input type="number" id="estimatedHours" min="1" max="24" step="0.5" value="2" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="address"><i class="fas fa-map-marker-alt"></i> Service Address</label>
+                    <input type="text" id="address" value="{{ current_user.address }}" required>
+                </div>
+                
+                <div class="cost-estimate">
+                    <h4>Estimated Cost: <span id="estimatedCost">$0.00</span></h4>
+                    <p>Based on technician's hourly rate</p>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-calendar-check"></i> Confirm Booking
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeBookingModal()">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let userLocation = null;
+let currentView = 'grid';
+let technicians = [];
+let currentTechnicianRate = 0;
+
+function setView(view) {
+    currentView = view;
+    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    renderResults();
+}
+
+function renderResults() {
+    const container = document.getElementById('resultsContainer');
+    if (technicians.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-search"></i>
+                <h3>No technicians found</h3>
+                <p>Try adjusting your filters</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (currentView === 'grid') {
+        container.className = 'results-grid';
+        container.innerHTML = technicians.map(tech => `
+            <div class="technician-card">
+                <div class="tech-header">
+                    <div class="tech-avatar">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div class="tech-info">
+                        <h3>${tech.name}</h3>
+                        <p class="tech-service">${tech.service_type}</p>
+                        <div class="tech-rating">
+                            ${generateStars(tech.rating)}
+                            <span>(${tech.total_reviews} reviews)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-details">
+                    <p><i class="fas fa-map-marker-alt"></i> ${tech.distance} km away</p>
+                    <p><i class="fas fa-money-bill-wave"></i> $${tech.hourly_rate}/hour</p>
+                    <p><i class="fas fa-briefcase"></i> ${tech.experience_years || 'N/A'} years experience</p>
+                </div>
+                <div class="tech-skills">
+                    ${tech.skills.slice(0, 3).map(skill => `<span class="skill-tag">${skill.trim()}</span>`).join('')}
+                    ${tech.skills.length > 3 ? '<span class="skill-tag">+ more</span>' : ''}
+                </div>
+                <p class="tech-description">${tech.description || 'No description provided'}</p>
+                <div class="tech-actions">
+                    <button class="btn-primary" onclick="openBookingModal(${tech.user_id}, '${tech.name}', ${tech.hourly_rate}, '${tech.service_type}', ${tech.rating})">
+                        <i class="fas fa-calendar-check"></i> Book Now
+                    </button>
+                    <button class="btn-secondary">
+                        <i class="fas fa-envelope"></i> Message
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        container.className = 'results-list';
+        container.innerHTML = technicians.map(tech => `
+            <div class="technician-list-item">
+                <div class="list-avatar">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div class="list-details">
+                    <h3>${tech.name}</h3>
+                    <div class="list-meta">
+                        <span><i class="fas fa-briefcase"></i> ${tech.service_type}</span>
+                        <span><i class="fas fa-map-marker-alt"></i> ${tech.distance} km away</span>
+                        <span><i class="fas fa-star"></i> ${tech.rating.toFixed(1)} (${tech.total_reviews} reviews)</span>
+                        <span><i class="fas fa-money-bill-wave"></i> $${tech.hourly_rate}/hour</span>
+                    </div>
+                    <p class="list-description">${tech.description || 'No description provided'}</p>
+                    <div class="list-skills">
+                        ${tech.skills.map(skill => `<span class="skill-tag">${skill.trim()}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="list-actions">
+                    <button class="btn-primary" onclick="openBookingModal(${tech.user_id}, '${tech.name}', ${tech.hourly_rate}, '${tech.service_type}', ${tech.rating})">
+                        <i class="fas fa-calendar-check"></i> Book
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    document.getElementById('resultsCount').textContent = `${technicians.length} technicians found`;
+}
+
+function generateStars(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= Math.floor(rating)) {
+            stars += '<i class="fas fa-star filled"></i>';
+        } else if (i === Math.ceil(rating) && rating % 1 !== 0) {
+            stars += '<i class="fas fa-star-half-alt"></i>';
+        } else {
+            stars += '<i class="far fa-star"></i>';
+        }
+    }
+    return stars;
+}
+
+async function getUserLocation() {
+    if (!navigator.geolocation) {
+        showNotification('Geolocation is not supported by your browser', 'error');
+        return;
+    }
+    
+    const status = document.getElementById('locationStatus');
+    status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
+    
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            userLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            };
+            
+            // Update location on server
+            try {
+                await fetch('/update-location', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userLocation)
+                });
+            } catch (error) {
+                console.error('Failed to update location on server:', error);
+            }
+            
+            status.innerHTML = '<i class="fas fa-check-circle" style="color: #4CAF50;"></i> Location set successfully';
+            status.style.color = '#4CAF50';
+            
+            // Search technicians with new location
+            searchTechnicians();
+        },
+        (error) => {
+            let message = 'Unable to retrieve your location. ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message += 'Permission denied. Please allow location access.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message += 'Location information unavailable.';
+                    break;
+                case error.TIMEOUT:
+                    message += 'Location request timed out.';
+                    break;
+                default:
+                    message += 'An unknown error occurred.';
+            }
+            
+            status.innerHTML = `<i class="fas fa-exclamation-circle" style="color: #f44336;"></i> ${message}`;
+            status.style.color = '#f44336';
+        }
+    );
+}
+
+async function searchTechnicians() {
+    if (!userLocation) {
+        showNotification('Please set your location first', 'warning');
+        return;
+    }
+    
+    const serviceType = document.getElementById('serviceType').value;
+    const maxDistance = document.getElementById('distance').value;
+    const minRating = document.querySelector('input[name="minRating"]:checked')?.value || 0;
+    const maxRate = document.getElementById('hourlyRate').value;
+    const keyword = document.getElementById('keywordSearch').value.toLowerCase();
+    
+    const container = document.getElementById('resultsContainer');
+    const noResults = document.getElementById('noResults');
+    
+    container.innerHTML = `
+        <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Searching for technicians...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/find-technicians', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+                service_type: serviceType,
+                max_distance: parseInt(maxDistance)
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Apply additional filters
+        technicians = data.technicians.filter(tech => {
+            if (minRating > 0 && tech.rating < minRating) return false;
+            if (maxRate && tech.hourly_rate > maxRate) return false;
+            if (keyword) {
+                const searchable = `${tech.name} ${tech.service_type} ${tech.description} ${tech.skills.join(' ')}`.toLowerCase();
+                if (!searchable.includes(keyword)) return false;
+            }
+            return true;
+        });
+        
+        // Apply sorting
+        const sortBy = document.getElementById('sortBy').value;
+        technicians.sort((a, b) => {
+            switch(sortBy) {
+                case 'rating': return b.rating - a.rating;
+                case 'rate': return a.hourly_rate - b.hourly_rate;
+                case 'experience': return (b.experience_years || 0) - (a.experience_years || 0);
+                default: return a.distance - b.distance;
+            }
+        });
+        
+        renderResults();
+        
+        if (technicians.length === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Error searching technicians:', error);
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error loading technicians</h3>
+                <p>Please try again later</p>
+            </div>
+        `;
+    }
+}
+
+function resetFilters() {
+    document.getElementById('serviceType').value = '';
+    document.getElementById('distance').value = '25';
+    document.getElementById('sortBy').value = 'distance';
+    document.getElementById('hourlyRate').value = '100';
+    document.getElementById('rateValue').textContent = '$100/hr';
+    document.getElementById('keywordSearch').value = '';
+    
+    const ratingInputs = document.querySelectorAll('input[name="minRating"]');
+    ratingInputs.forEach(input => input.checked = false);
+    
+    if (userLocation) {
+        searchTechnicians();
+    }
+}
+
+function openBookingModal(techId, techName, hourlyRate, serviceType, rating) {
+    currentTechnicianRate = hourlyRate;
+    
+    document.getElementById('technicianId').value = techId;
+    document.getElementById('technicianName').value = techName;
+    document.getElementById('modalTechName').textContent = techName;
+    document.getElementById('modalTechService').textContent = serviceType;
+    document.getElementById('modalTechRating').innerHTML = generateStars(rating);
+    document.getElementById('serviceTypeSelect').value = serviceType;
+    
+    // Set minimum date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    document.getElementById('scheduledDate').min = tomorrow.toISOString().slice(0, 16);
+    document.getElementById('scheduledDate').value = tomorrow.toISOString().slice(0, 16);
+    
+    updateEstimatedCost();
+    
+    document.getElementById('bookingModal').style.display = 'flex';
+}
+
+function closeBookingModal() {
+    document.getElementById('bookingModal').style.display = 'none';
+    document.getElementById('bookingForm').reset();
+}
+
+function updateEstimatedCost() {
+    const hours = document.getElementById('estimatedHours').value;
+    const cost = hours * currentTechnicianRate;
+    document.getElementById('estimatedCost').textContent = `$${cost.toFixed(2)}`;
+}
+
+// Event listeners
+document.getElementById('estimatedHours').addEventListener('input', updateEstimatedCost);
+document.getElementById('hourlyRate').addEventListener('input', function() {
+    document.getElementById('rateValue').textContent = `$${this.value}/hr`;
+});
+
+document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        technician_id: parseInt(document.getElementById('technicianId').value),
+        service_type: document.getElementById('serviceTypeSelect').value,
+        description: document.getElementById('description').value,
+        address: document.getElementById('address').value,
+        scheduled_date: document.getElementById('scheduledDate').value,
+        estimated_hours: parseFloat(document.getElementById('estimatedHours').value),
+        latitude: userLocation?.latitude,
+        longitude: userLocation?.longitude
+    };
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Booking...';
+    submitBtn.disabled = true;
+    
+    try {
+        const response = await fetch('/book-technician', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Booking request sent successfully!', 'success');
+            closeBookingModal();
+            setTimeout(() => {
+                window.location.href = '/customer/dashboard';
+            }, 1500);
+        } else {
+            showNotification(data.error || 'Failed to book technician', 'error');
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    } catch (error) {
+        showNotification('An error occurred. Please try again.', 'error');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+});
+
+// Initialize
+window.addEventListener('load', async () => {
+    // Try to get location automatically
+    await getUserLocation();
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('bookingModal');
+        if (event.target == modal) {
+            closeBookingModal();
+        }
+    }
+});
+</script>
+{% endblock %}
