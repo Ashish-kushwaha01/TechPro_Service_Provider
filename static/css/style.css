@@ -391,7 +391,7 @@ body {
 .dashboard-header {
     background: white;
     border-radius: 20px;
-    padding: 2rem;
+    padding: 1.4rem;
     margin-bottom: 2rem;
     box-shadow: var(--shadow);
 }
@@ -406,7 +406,7 @@ body {
 .stat-card {
     background: white;
     border-radius: 15px;
-    padding: 1.5rem;
+    padding: 1rem;
     display: flex;
     align-items: center;
     gap: 1.5rem;

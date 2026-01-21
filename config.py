@@ -21,7 +21,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'change-this-in-production')
     
     # Database
-    SQLALCHEMY_DATABASE_URI = get_database_url()
+    # SQLALCHEMY_DATABASE_URI = get_database_url()
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///tech_booking.db' 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_size': 10,
