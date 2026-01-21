@@ -25,6 +25,7 @@
                             <i class="fas fa-search"></i> Find Technicians
                         </a>
                     {% endif %}
+                    
                     <a href="{{ url_for('customer_bookings' if current_user.role == 'customer' else 'technician_bookings') }}">
                         <i class="fas fa-calendar-alt"></i> Bookings
                     </a>
@@ -69,7 +70,7 @@
             </div>
             <div class="footer-section">
                 <h4>Contact</h4>
-                <p><i class="fas fa-phone"></i> +91 8726112768</p>
+                <p><i class="fas fa-phone"></i> +91 67584673527</p>
                 <p><i class="fas fa-envelope"></i> ashish@gmail.com</p>
             </div>
         </div>
